@@ -89,7 +89,7 @@
                     </td>
                     <td class="text-center">
                         {% if task.due_datetime %}
-                            📅 {{ task.due_datetime|date:"d M Y, H:i" }}
+                             {{ task.due_datetime|date:"d M Y" }}
                         {% else %}
                             <span class="text-muted">- ไม่กำหนด -</span>
                         {% endif %}
