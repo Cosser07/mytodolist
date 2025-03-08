@@ -19,46 +19,15 @@
             border-radius: 12px;
             padding: 30px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            max-width: 500px;
+            max-width: 900px;
             width: 100%;
-            transition: 0.3s ease-in-out;
         }
-        .todo-container:hover {
-            transform: scale(1.02);
+        .due-soon {
+            background-color: #ffcccc !important; /* ไฮไลท์สีแดงสำหรับงานที่ใกล้ครบกำหนด */
         }
-        h1 {
-            color: #4a47a3;
-            font-weight: bold;
-        }
-        .btn-custom {
-            width: 100%;
-            font-weight: bold;
-        }
-        .list-group-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: 0.3s;
-            flex-wrap: wrap;
-            border-radius: 8px;
-            margin-bottom: 5px;
-        }
-        .list-group-item:hover {
-            background: #f8f9fa;
-            transform: scale(1.02);
-        }
-        .task-info {
-            flex-grow: 1;
-        }
-        .date-badge {
-            font-size: 0.8rem;
-        }
-        .completed {
-            text-decoration: line-through;
-            color: #6c757d;
-        }
-        .search-bar {
-            margin-bottom: 15px;
+        .overdue {
+            background-color: #ff6666 !important; /* ไฮไลท์สีแดงเข้มสำหรับงานที่เลยกำหนด */
+            color: white !important;
         }
     </style>
 </head>
@@ -68,46 +37,102 @@
     <h1 class="text-center mb-4">📌 To-Do List</h1>
 
     <!-- Search Bar -->
-    <input type="text" id="searchTask" class="form-control search-bar" placeholder="🔍 ค้นหางาน..." onkeyup="filterTasks()">
+    <input type="text" id="searchTask" class="form-control search-bar mb-3" placeholder="🔍 ค้นหางาน, ความสำคัญ หรือวันครบกำหนด..." onkeyup="filterTasks()">
     
     <!-- Add Task Form -->
-    <form method="POST" class="input-group mb-3">
+    <form method="POST" class="mb-3">
         {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit" class="btn btn-primary btn-custom">➕ เพิ่ม</button>
+        <div class="mb-2">
+            <label for="id_title" class="form-label">งาน</label>
+            {{ form.title }}
+        </div>
+        <div class="mb-2">
+            <label for="id_priority" class="form-label">ลำดับความสำคัญ</label>
+            {{ form.priority }}
+        </div>
+        <div class="mb-2">
+            <label for="id_due_datetime" class="form-label">วันและเวลาสิ้นสุด</label>
+            {{ form.due_datetime }}
+        </div>
+        <div class="mb-2 form-check">
+            {{ form.completed }} <label class="form-check-label" for="id_completed">เสร็จแล้ว</label>
+        </div>
+        <button type="submit" class="btn btn-primary w-100">➕ เพิ่ม</button>
     </form>
 
-    <!-- Task List -->
-    <ul class="list-group" id="taskList">
-        {% for task in tasks %}
-        <li class="list-group-item {% if task.completed %}completed{% endif %}">
-            <div class="task-info">
-                <span>{{ task.title }}</span><br>
-                <span class="badge bg-secondary date-badge">📅 {{ task.created_at|date:"d M Y, H:i" }}</span>
-            </div>
-            <div>
-                {% if not task.completed %}
-                <a href="{% url 'task_complete' task.id %}" class="btn btn-success btn-sm">✔️ เสร็จสิ้น</a>
-                {% endif %}
-                <a href="{% url 'task_update' task.id %}" class="btn btn-warning btn-sm">✏️ แก้ไข</a>
-                <a href="{% url 'task_delete' task.id %}" class="btn btn-danger btn-sm">🗑 ลบ</a>
-            </div>
-        </li>
-        {% empty %}
-        <li class="list-group-item text-center text-muted">ไม่มีงานที่ต้องทำ</li>
-        {% endfor %}
-    </ul>
+    <!-- Task Table -->
+    <div class="table-responsive">
+        <table class="table table-hover table-bordered">
+            <thead class="table-dark text-center">
+                <tr>
+                    <th>#</th>
+                    <th>งาน</th>
+                    <th>ลำดับความสำคัญ</th>
+                    <th>วันครบกำหนด</th>
+                    <th>สถานะ</th>
+                    <th>การจัดการ</th>
+                </tr>
+            </thead>
+            <tbody id="taskTable">
+                {% for task in tasks %}
+                <tr class="{% if task.is_due_soon and not task.completed %} due-soon {% endif %}">
+                    <td class="text-center">{{ forloop.counter }}</td>
+                    <td>{{ task.title }}</td>
+                    <td class="text-center">
+                        {% if task.priority == 'high' %}
+                            <span class="badge bg-danger">🔥 สูง</span>
+                        {% elif task.priority == 'medium' %}
+                            <span class="badge bg-warning text-dark">⚡ ปานกลาง</span>
+                        {% else %}
+                            <span class="badge bg-success">✅ ต่ำ</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if task.due_datetime %}
+                            📅 {{ task.due_datetime|date:"d M Y, H:i" }}
+                        {% else %}
+                            <span class="text-muted">- ไม่กำหนด -</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if task.completed %}
+                            <span class="badge bg-success">✔️ เสร็จสิ้น</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">⏳ กำลังทำ</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        {% if not task.completed %}
+                        <a href="{% url 'task_complete' task.id %}" class="btn btn-success btn-sm">✔️ เสร็จสิ้น</a>
+                        {% endif %}
+                        <a href="{% url 'task_update' task.id %}" class="btn btn-warning btn-sm">✏️ แก้ไข</a>
+                        <a href="{% url 'task_delete' task.id %}" class="btn btn-danger btn-sm">🗑 ลบ</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted">ไม่มีงานที่ต้องทำ</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <script>
     // ฟังก์ชันสำหรับค้นหางานใน To-Do List
     function filterTasks() {
         let input = document.getElementById('searchTask').value.toLowerCase();
-        let tasks = document.getElementById('taskList').getElementsByTagName('li');
+        let tasks = document.getElementById('taskTable').getElementsByTagName('tr');
 
-        for (let i = 0; i < tasks.length; i++) {
-            let taskText = tasks[i].getElementsByTagName("span")[0].innerText.toLowerCase();
-            if (taskText.includes(input)) {
+        for (let i = 1; i < tasks.length; i++) { // ข้ามหัวตาราง
+            let taskText = tasks[i].getElementsByTagName("td")[1]?.innerText.toLowerCase();
+            let priorityText = tasks[i].getElementsByTagName("td")[2]?.innerText.toLowerCase();
+            let dueDateText = tasks[i].getElementsByTagName("td")[3]?.innerText.toLowerCase();
+
+            if ((taskText && taskText.includes(input)) || 
+                (priorityText && priorityText.includes(input)) || 
+                (dueDateText && dueDateText.includes(input))) {
                 tasks[i].style.display = "";
             } else {
                 tasks[i].style.display = "none";
